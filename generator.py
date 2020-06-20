@@ -54,6 +54,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simple raw shellcode Dropper Generator")
     parser.add_argument("binaryPath", help="File containing raw shellcode")
     parser.add_argument("-a", "--arch", default="1", help="Shellcode Architecture (1=x64, 2=x86) (default=x64)")
+    parser.add_argument("-d", "--debug", default=False, action="store_true", help="Generate cpp code with the executable for debuging")
     args = parser.parse_args()
     
     binaryPath = args.binaryPath
@@ -64,6 +65,7 @@ def main():
         Arch = archs[args.arch]
     except KeyError:
         printE("Invalid Arch...!")
+        parser.print_help()
         sys.exit(1)
 
     # Encrypting provided binary
@@ -82,14 +84,18 @@ def main():
 
     # Compiling Code
     if Arch == "x64":
+        outputFileName += "-64"
         os.system(f"x86_64-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
     elif Arch == "x86":
+        outputFileName += "-86"
         os.system(f"i686-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
-    os.system(f"/usr/bin/cp sources/code.cpp output/{outputFileName}.cpp")
-
-    os.system("/usr/bin/cp sources/code.cpp.bak sources/code.cpp")
+    if args.debug:
+        os.system(f"/usr/bin/cp sources/code.cpp output/{outputFileName}.cpp")
+        printS(f"Code saved to output/{outputFileName}.cpp")
 
     printS(f"Executable saved to output/{outputFileName}.exe")
+    os.system("/usr/bin/cp sources/code.cpp.bak sources/code.cpp")
+
 
 if __name__ == "__main__":
     main()
