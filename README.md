@@ -16,6 +16,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -a ARCH, --arch ARCH  Shellcode Architecture (1=x64, 2=x86) (default=x64)
+  -d, --debug           Generate cpp code with the executable for debuging
 ```
 
 Create raw 64bit or 32bit shellcode with any tool you like here i will use msfvenom calc 64bit shellcode.
