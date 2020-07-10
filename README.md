@@ -2,6 +2,12 @@
 
 Simple project to generate 32bit or 64bit droppers
 
+# Installation
+
+```
+pip3 install -r requirments.txt
+```
+
 # Usage
 
 ```
@@ -33,6 +39,7 @@ $ ./generator.py calc.bin
 
 
 ## Todo
+* add check for tools and dependencies.
 * add option to generate direct from msfvenom.
 * add option to pass .NET assemblies and use donut.
 * add option to specifed output directory and output name.
