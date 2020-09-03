@@ -1,6 +1,9 @@
 # malware-generator
 
-Simple project to generate 32bit or 64bit droppers
+Simple project to generate 32bit or 64bit undetectable droppers from shellcodes
+
+Thanks to [@slaeryan](https://twitter.com/slaeryan) for the great help and advices.
+
 
 # Installation
 
